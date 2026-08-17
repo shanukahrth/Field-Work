@@ -102,7 +102,7 @@ function renderTable(list) {
     document.getElementById('resetPasswordUserId').value = btn.dataset.id;
     document.getElementById('resetPasswordUserName').textContent = btn.dataset.name;
     document.getElementById('newPasswordInput').value = 'password123';
-    new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('resetPasswordModal')).show();
   }));
   tbody.querySelectorAll('.toggle-status-btn').forEach(btn => btn.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -140,7 +140,7 @@ function openEmployeeModal(emp) {
   } else if (currentUser.role === 'manager') {
     document.getElementById('empManager').value = currentUser.id;
   }
-  new bootstrap.Modal(document.getElementById('employeeModal')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('employeeModal')).show();
 }
 
 function wireEmployeeForm() {

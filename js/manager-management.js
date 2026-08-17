@@ -75,7 +75,7 @@ function renderTable(list) {
     document.getElementById('resetPasswordUserId').value = btn.dataset.id;
     document.getElementById('resetPasswordUserName').textContent = btn.dataset.name;
     document.getElementById('newPasswordInput').value = 'password123';
-    new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('resetPasswordModal')).show();
   }));
   tbody.querySelectorAll('.toggle-status-btn').forEach(btn => btn.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -106,7 +106,7 @@ function openManagerModal(mgr) {
     document.getElementById('mgrPhone').value = mgr.phone || '';
     document.getElementById('mgrTitle').value = mgr.title || '';
   }
-  new bootstrap.Modal(document.getElementById('managerModal')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('managerModal')).show();
 }
 
 function wireManagerForm() {

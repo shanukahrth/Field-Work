@@ -58,7 +58,7 @@ function renderProfileHeader() {
     document.getElementById('editEmail').value = viewedUser.email;
     document.getElementById('editPhone').value = viewedUser.phone || '';
     document.getElementById('editTitle').value = viewedUser.title || '';
-    new bootstrap.Modal(document.getElementById('editProfileModal')).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('editProfileModal')).show();
   });
 
   document.getElementById('profileResetPwBtn')?.addEventListener('click', async () => {

@@ -80,7 +80,7 @@ function renderList() {
     const item = currentItems.find(i => i.id === btn.dataset.id);
     document.getElementById('editItemId').value = item.id;
     document.getElementById('editItemTitle').value = item.title;
-    new bootstrap.Modal(document.getElementById('editItemModal')).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('editItemModal')).show();
   }));
   container.querySelectorAll('.delete-item-btn').forEach(btn => btn.addEventListener('click', async () => {
     const ok = await showConfirm({ title: 'Remove this item?', message: 'It will be removed from this day\u2019s checklist.', confirmText: 'Remove', confirmClass: 'btn-danger' });

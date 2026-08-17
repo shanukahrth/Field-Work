@@ -334,7 +334,7 @@ function showConfirm({ title = 'Are you sure?', message = '', confirmText = 'Con
   const okBtn = document.getElementById('confirmModalOk');
   okBtn.className = `btn ${confirmClass}`;
   okBtn.textContent = confirmText;
-  const modal = new bootstrap.Modal(modalEl);
+  const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   return new Promise((resolve) => {
     const onOk = () => { modal.hide(); cleanup(); resolve(true); };
     const onHide = () => { cleanup(); resolve(false); };

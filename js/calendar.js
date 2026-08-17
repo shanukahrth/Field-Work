@@ -92,7 +92,7 @@ function showEventDetails(event) {
       <div class="small text-muted-fw">${formatDateTime(data.datetime)}</div>`;
     footer.innerHTML = `<a href="reminders.html" class="btn btn-primary btn-sm">Open in Reminders</a>`;
   }
-  new bootstrap.Modal(document.getElementById('eventDetailsModal')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('eventDetailsModal')).show();
 }
 
 function openQuickAdd(dateStr) {
@@ -102,7 +102,7 @@ function openQuickAdd(dateStr) {
   }
   document.getElementById('cqDueDate').value = dateStr;
   document.getElementById('cqTitle').value = '';
-  new bootstrap.Modal(document.getElementById('calendarQuickAddModal')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('calendarQuickAddModal')).show();
 }
 
 function wireQuickAdd() {

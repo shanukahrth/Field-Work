@@ -195,7 +195,7 @@ function openTaskModal(task) {
     document.getElementById('tDueDate').value = todayISO();
     if (currentUser.role !== 'employee' && teamMembers.length) document.getElementById('tAssignedTo').value = teamMembers[0].id;
   }
-  new bootstrap.Modal(document.getElementById('taskModal')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('taskModal')).show();
 }
 
 function wireForm() {

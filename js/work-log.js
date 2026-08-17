@@ -115,7 +115,7 @@ function openLogModal(log) {
 
   form.querySelectorAll('input, textarea, select').forEach(el => { if (el.type !== 'hidden') el.disabled = readOnly; });
 
-  new bootstrap.Modal(document.getElementById('workLogModal')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('workLogModal')).show();
 }
 
 function wireForm() {
