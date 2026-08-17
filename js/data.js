@@ -62,6 +62,11 @@ async function sb(table, { method = 'GET', query = [], body, single = false } = 
 
 const enc = (v) => encodeURIComponent(v);
 
+/** Same id scheme every previous version of this app's backend used to generate server-side. */
+function genId(prefix) {
+  return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
 /* ---------------------------------------------------------------------------
  * DEMO SEED DATA — same dataset the app has always shipped with, used only
  * by API.system.resetDemoData() below (initial data comes from schema.sql).
@@ -153,7 +158,7 @@ const API = {
     getEmployeesForManager: (managerId) => sb('users', { query: [`managerId=eq.${enc(managerId)}`, 'role=eq.employee', 'select=*'] }),
     getAllEmployees: () => sb('users', { query: ['role=eq.employee', 'select=*'] }),
     getAllManagers: () => sb('users', { query: ['role=eq.manager', 'select=*'] }),
-    create: (user) => sb('users', { method: 'POST', body: user, single: true }),
+    create: (user) => sb('users', { method: 'POST', body: { id: genId('u'), ...user }, single: true }),
     update: (id, changes) => sb('users', { method: 'PATCH', query: [`id=eq.${enc(id)}`], body: changes, single: true }),
     setStatus: (id, status) => API.users.update(id, { status }),
     resetPassword: (id, newPassword) => API.users.update(id, { password: newPassword })
@@ -165,7 +170,7 @@ const API = {
     getById: (id) => sb('tasks', { query: [`id=eq.${enc(id)}`, 'select=*'], single: true }),
     getForUser: (userId) => sb('tasks', { query: [`assignedTo=eq.${enc(userId)}`, 'select=*', 'order=dueDate.asc'] }),
     getForUsers: (userIds) => sb('tasks', { query: [`assignedTo=in.(${userIds.map(enc).join(',')})`, 'select=*', 'order=dueDate.asc'] }),
-    create: (task) => sb('tasks', { method: 'POST', body: task, single: true }),
+    create: (task) => sb('tasks', { method: 'POST', body: { id: genId('t'), ...task }, single: true }),
     update: (id, changes) => sb('tasks', { method: 'PATCH', query: [`id=eq.${enc(id)}`], body: changes, single: true }),
     remove: (id) => sb('tasks', { method: 'DELETE', query: [`id=eq.${enc(id)}`] })
   },
@@ -175,7 +180,7 @@ const API = {
     getAll: () => sb('workLogs', { query: ['select=*', 'order=date.desc'] }),
     getForUser: (userId) => sb('workLogs', { query: [`employeeId=eq.${enc(userId)}`, 'select=*', 'order=date.desc'] }),
     getForUsers: (userIds) => sb('workLogs', { query: [`employeeId=in.(${userIds.map(enc).join(',')})`, 'select=*', 'order=date.desc'] }),
-    create: (log) => sb('workLogs', { method: 'POST', body: log, single: true }),
+    create: (log) => sb('workLogs', { method: 'POST', body: { id: genId('w'), ...log }, single: true }),
     update: (id, changes) => sb('workLogs', { method: 'PATCH', query: [`id=eq.${enc(id)}`], body: changes, single: true }),
     remove: (id) => sb('workLogs', { method: 'DELETE', query: [`id=eq.${enc(id)}`] })
   },
@@ -184,7 +189,7 @@ const API = {
   reminders: {
     getAll: () => sb('reminders', { query: ['select=*', 'order=datetime.asc'] }),
     getForUser: (userId) => sb('reminders', { query: [`forUser=eq.${enc(userId)}`, 'select=*', 'order=datetime.asc'] }),
-    create: (reminder) => sb('reminders', { method: 'POST', body: reminder, single: true }),
+    create: (reminder) => sb('reminders', { method: 'POST', body: { id: genId('r'), ...reminder }, single: true }),
     update: (id, changes) => sb('reminders', { method: 'PATCH', query: [`id=eq.${enc(id)}`], body: changes, single: true }),
     remove: (id) => sb('reminders', { method: 'DELETE', query: [`id=eq.${enc(id)}`] })
   },
@@ -203,7 +208,7 @@ const API = {
     },
     create: async (item) => {
       const { order, ...rest } = item;
-      const row = await sb('plannerItems', { method: 'POST', body: { ...rest, sortOrder: order }, single: true });
+      const row = await sb('plannerItems', { method: 'POST', body: { id: genId('p'), ...rest, sortOrder: order }, single: true });
       return { ...row, order: row.sortOrder };
     },
     update: async (id, changes) => {
