@@ -288,9 +288,9 @@ function ensureToastContainer() {
  *      included on any page that calls sendNotificationEmail() (see tasks.html)
  * ============================================================================
  */
-const EMAILJS_PUBLIC_KEY = '';
-const EMAILJS_SERVICE_ID = '';
-const EMAILJS_TEMPLATE_ID = '';
+const EMAILJS_PUBLIC_KEY = 'H4pqNbJSV-NXGwb5D';
+const EMAILJS_SERVICE_ID = 'service_eq2oq4d';
+const EMAILJS_TEMPLATE_ID = 'template_7lmz7gm';
 
 let _emailjsInitialized = false;
 
