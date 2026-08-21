@@ -304,7 +304,7 @@ function ensureToastContainer() {
  * ============================================================================
  */
 const EMAILJS_PUBLIC_KEY = 'H4pqNbJSV-NXGwb5D';
-const EMAILJS_SERVICE_ID = 'service_eq2oq4d';
+const EMAILJS_SERVICE_ID = 'service_jdtsrcf';
 const EMAILJS_TEMPLATE_ID = 'template_7lmz7gm';
 
 let _emailjsInitialized = false;
