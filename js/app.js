@@ -259,6 +259,21 @@ function initPage(activePage, allowedRoles) {
 }
 
 /* ---------------------------- TOASTS ---------------------------- */
+
+/**
+ * Global fix for a well-known Bootstrap accessibility warning: if a button
+ * inside a modal still has keyboard focus when the modal starts hiding,
+ * Bootstrap marks the modal aria-hidden while it still contains focus,
+ * which browsers correctly flag in the console. Moving focus out right
+ * before the hide starts (any Bootstrap modal, anywhere in the app) fixes
+ * it in one place instead of patching every individual .hide() call.
+ */
+document.addEventListener('hide.bs.modal', (e) => {
+  if (document.activeElement && e.target.contains(document.activeElement)) {
+    document.activeElement.blur();
+  }
+});
+
 function ensureToastContainer() {
   let el = document.getElementById('toastContainer');
   if (!el) {
