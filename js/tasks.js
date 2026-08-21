@@ -217,12 +217,40 @@ function wireForm() {
       showToast('Task updated.', 'success');
     } else {
       payload.createdBy = currentUser.id;
-      await API.tasks.create(payload);
+      const created = await API.tasks.create(payload);
       showToast('Task added.', 'success');
+      if (currentUser.role === 'manager') notifyManagerTaskCreated(created);
     }
     bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
     await loadTasks();
   });
+}
+
+/**
+ * Emails the assigned employee and every Super Admin when a manager creates
+ * a task. No-op (silently) if EmailJS isn't configured — see js/app.js.
+ */
+async function notifyManagerTaskCreated(task) {
+  try {
+    const [assignee, admins] = await Promise.all([
+      API.users.getById(task.assignedTo),
+      API.users.getAllSuperAdmins()
+    ]);
+    const recipients = new Set();
+    if (assignee) recipients.add(assignee.email);
+    admins.forEach((a) => recipients.add(a.email));
+    const templateParams = {
+      task_title: task.title,
+      task_description: task.description || '(no description)',
+      task_priority: task.priority,
+      task_due_date: task.dueDate,
+      assignee_name: assignee ? assignee.name : '',
+      manager_name: currentUser.name
+    };
+    await Promise.all([...recipients].map((email) => sendNotificationEmail(email, templateParams)));
+  } catch (err) {
+    console.error('Task-created notification failed:', err);
+  }
 }
 
 async function deleteTask(id) {

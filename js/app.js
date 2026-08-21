@@ -272,6 +272,45 @@ function ensureToastContainer() {
 }
 
 /**
+ * ============================================================================
+ * EMAIL NOTIFICATIONS (optional) — powered by EmailJS, no backend needed.
+ * ----------------------------------------------------------------------------
+ * Leave these three constants blank to keep notifications disabled (nothing
+ * breaks — sendNotificationEmail() just silently does nothing). To enable:
+ *   1. Sign up free at https://www.emailjs.com
+ *   2. Add an Email Service (e.g. connect Gmail) — copy its Service ID
+ *   3. Create an Email Template using these variable names in the body:
+ *      {{to_email}} {{task_title}} {{task_description}} {{task_priority}}
+ *      {{task_due_date}} {{assignee_name}} {{manager_name}}
+ *      — copy the Template ID
+ *   4. Account > General > copy your Public Key
+ *   5. Paste all three below, and make sure the EmailJS SDK script tag is
+ *      included on any page that calls sendNotificationEmail() (see tasks.html)
+ * ============================================================================
+ */
+const EMAILJS_PUBLIC_KEY = '';
+const EMAILJS_SERVICE_ID = '';
+const EMAILJS_TEMPLATE_ID = '';
+
+let _emailjsInitialized = false;
+
+function emailNotificationsEnabled() {
+  return !!(EMAILJS_PUBLIC_KEY && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && typeof emailjs !== 'undefined');
+}
+
+/** Fire-and-forget: sends one templated email, never throws (logs and swallows failures). */
+function sendNotificationEmail(toEmail, templateParams) {
+  if (!emailNotificationsEnabled()) return Promise.resolve();
+  if (!_emailjsInitialized) {
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+    _emailjsInitialized = true;
+  }
+  return emailjs
+    .send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { to_email: toEmail, ...templateParams })
+    .catch((err) => console.error('Email notification failed:', err));
+}
+
+/**
  * Show a Bootstrap toast.
  * @param {string} message
  * @param {'success'|'danger'|'warning'|'info'} type

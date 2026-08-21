@@ -158,6 +158,7 @@ const API = {
     getEmployeesForManager: (managerId) => sb('users', { query: [`managerId=eq.${enc(managerId)}`, 'role=eq.employee', 'select=*'] }),
     getAllEmployees: () => sb('users', { query: ['role=eq.employee', 'select=*'] }),
     getAllManagers: () => sb('users', { query: ['role=eq.manager', 'select=*'] }),
+    getAllSuperAdmins: () => sb('users', { query: ['role=eq.super_admin', 'select=*'] }),
     create: (user) => sb('users', { method: 'POST', body: { id: genId('u'), ...user }, single: true }),
     update: (id, changes) => sb('users', { method: 'PATCH', query: [`id=eq.${enc(id)}`], body: changes, single: true }),
     setStatus: (id, status) => API.users.update(id, { status }),
