@@ -23,10 +23,23 @@ function teamSizeFor(managerId) {
   return allEmployeesList.filter(e => e.managerId === managerId).length;
 }
 
+function reportsToLabel(managerId) {
+  if (!managerId) return '<span class="text-muted-fw">Top Level</span>';
+  const boss = allManagersList.find(m => m.id === managerId);
+  return boss ? escapeHtml(boss.name) : '<span class="text-muted-fw">—</span>';
+}
+
+function populateReportsToDropdown(excludeId) {
+  const select = document.getElementById('mgrReportsTo');
+  const options = allManagersList.filter(m => m.id !== excludeId);
+  select.innerHTML = '<option value="">— Top Level (reports to Super Admin) —</option>' +
+    options.map(m => `<option value="${m.id}">${escapeHtml(m.name)}${m.title ? ' — ' + escapeHtml(m.title) : ''}</option>`).join('');
+}
+
 function renderTable(list) {
   const tbody = document.getElementById('managerTableBody');
   if (list.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4">
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4">
       <div class="empty-state"><span class="material-symbols-outlined">group_off</span><div>No managers match your filters.</div></div>
     </td></tr>`;
     return;
@@ -46,6 +59,7 @@ function renderTable(list) {
         <div class="small">${escapeHtml(m.email)}</div>
         <div class="small text-muted-fw">${escapeHtml(m.phone || '')}</div>
       </td>
+      <td class="small">${reportsToLabel(m.managerId)}</td>
       <td>${teamSizeFor(m.id)} employee${teamSizeFor(m.id) !== 1 ? 's' : ''}</td>
       <td>${statusPill(m.status)}</td>
       <td class="text-end">
@@ -100,11 +114,13 @@ function openManagerModal(mgr) {
   document.getElementById('managerModalTitle').textContent = mgr ? 'Edit Manager' : 'Create Manager';
   document.getElementById('managerSubmitBtn').textContent = mgr ? 'Save Changes' : 'Create Manager';
   document.getElementById('mgrPasswordWrap').classList.toggle('d-none', !!mgr);
+  populateReportsToDropdown(mgr ? mgr.id : null);
   if (mgr) {
     document.getElementById('mgrName').value = mgr.name;
     document.getElementById('mgrEmail').value = mgr.email;
     document.getElementById('mgrPhone').value = mgr.phone || '';
     document.getElementById('mgrTitle').value = mgr.title || '';
+    document.getElementById('mgrReportsTo').value = mgr.managerId || '';
   }
   bootstrap.Modal.getOrCreateInstance(document.getElementById('managerModal')).show();
 }
@@ -117,14 +133,14 @@ function wireManagerForm() {
       name: document.getElementById('mgrName').value.trim(),
       email: document.getElementById('mgrEmail').value.trim(),
       phone: document.getElementById('mgrPhone').value.trim(),
-      title: document.getElementById('mgrTitle').value.trim()
+      title: document.getElementById('mgrTitle').value.trim(),
+      managerId: document.getElementById('mgrReportsTo').value || null
     };
     if (id) {
       await API.users.update(id, payload);
       showToast('Manager details updated.', 'success');
     } else {
       payload.role = 'manager';
-      payload.managerId = null;
       payload.password = document.getElementById('mgrPassword').value || 'password123';
       await API.users.create(payload);
       showToast('Manager account created.', 'success');

@@ -10,7 +10,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('welcomeHeading').textContent = `Welcome back, ${currentUser.name.split(' ')[0]}!`;
   document.getElementById('welcomeDate').textContent = formatDateLong(todayISO());
 
-  myEmployees = await API.users.getEmployeesForManager(currentUser.id);
+  // Includes sub-managers reporting to this manager too, not just employees —
+  // supports multi-level org structures.
+  myEmployees = await API.users.getDirectReports(currentUser.id);
   const employeeIds = myEmployees.map(e => e.id);
 
   const [tasks, logs, activity] = await Promise.all([

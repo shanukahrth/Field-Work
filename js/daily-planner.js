@@ -4,7 +4,7 @@
 let currentUser, selectedDate, currentItems = [], sortableInstance;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  currentUser = initPage('daily-planner', 'employee');
+  currentUser = initPage('daily-planner', 'employee,manager');
   if (!currentUser) return;
 
   const params = new URLSearchParams(window.location.search);

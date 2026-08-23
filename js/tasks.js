@@ -12,12 +12,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (currentUser.role !== 'employee') {
     document.getElementById('taskEmpColHeader').style.display = '';
     document.getElementById('filterEmployeeWrap').style.display = '';
-    teamMembers = currentUser.role === 'manager' ? await API.users.getEmployeesForManager(currentUser.id) : await API.users.getAllEmployees();
+    if (currentUser.role === 'manager') {
+      // Includes anyone reporting to this manager (employees AND sub-managers,
+      // for multi-level org structures), plus the manager themselves so they
+      // can be assigned tasks too, not just assign them to others.
+      const reports = await API.users.getDirectReports(currentUser.id);
+      teamMembers = [currentUser, ...reports];
+    } else {
+      const [employees, managers] = await Promise.all([API.users.getAllEmployees(), API.users.getAllManagers()]);
+      teamMembers = [...managers, ...employees];
+    }
     const filterSel = document.getElementById('filterEmployee');
     const formSel = document.getElementById('tAssignedTo');
     teamMembers.forEach(e => {
-      filterSel.insertAdjacentHTML('beforeend', `<option value="${e.id}">${escapeHtml(e.name)}</option>`);
-      formSel.insertAdjacentHTML('beforeend', `<option value="${e.id}">${escapeHtml(e.name)}</option>`);
+      const label = e.id === currentUser.id ? `${e.name} (you)` : e.name;
+      filterSel.insertAdjacentHTML('beforeend', `<option value="${e.id}">${escapeHtml(label)}</option>`);
+      formSel.insertAdjacentHTML('beforeend', `<option value="${e.id}">${escapeHtml(label)}</option>`);
     });
   } else {
     // Hidden fields must not stay "required" or the browser will silently

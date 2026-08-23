@@ -28,6 +28,7 @@ const NAV_CONFIG = {
     { label: 'Dashboard', icon: 'dashboard', href: 'manager-dashboard.html', id: 'manager-dashboard' },
     { label: 'Employees', icon: 'groups', href: 'employee-management.html', id: 'employee-management' },
     { section: 'Operations' },
+    { label: 'Daily Planner', icon: 'checklist', href: 'daily-planner.html', id: 'daily-planner' },
     { label: 'Tasks', icon: 'task_alt', href: 'tasks.html', id: 'tasks' },
     { label: 'Work Logs', icon: 'work_history', href: 'work-log.html', id: 'work-log' },
     { label: 'Calendar', icon: 'calendar_month', href: 'calendar.html', id: 'calendar' },

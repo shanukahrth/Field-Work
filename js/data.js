@@ -156,6 +156,9 @@ const API = {
     getById: (id) => sb('users', { query: [`id=eq.${enc(id)}`, 'select=*'], single: true }),
     getByEmail: (email) => sb('users', { query: [`email=eq.${enc(email)}`, 'select=*'], single: true }),
     getEmployeesForManager: (managerId) => sb('users', { query: [`managerId=eq.${enc(managerId)}`, 'role=eq.employee', 'select=*'] }),
+    // Everyone reporting to this manager, regardless of role — supports multi-level
+    // hierarchies where a manager can have other managers reporting to them too.
+    getDirectReports: (managerId) => sb('users', { query: [`managerId=eq.${enc(managerId)}`, 'select=*'] }),
     getAllEmployees: () => sb('users', { query: ['role=eq.employee', 'select=*'] }),
     getAllManagers: () => sb('users', { query: ['role=eq.manager', 'select=*'] }),
     getAllSuperAdmins: () => sb('users', { query: ['role=eq.super_admin', 'select=*'] }),

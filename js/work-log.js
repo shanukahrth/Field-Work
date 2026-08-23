@@ -13,11 +13,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (currentUser.role !== 'employee') {
     document.getElementById('employeeColHeader').style.display = '';
     document.getElementById('filterEmployeeWrap').style.display = '';
-    document.getElementById('workLogSubtitle').textContent = 'Review detailed field visit records submitted by your team.';
-    document.getElementById('openAddLogBtn').style.display = 'none';
-    teamMembers = currentUser.role === 'manager' ? await API.users.getEmployeesForManager(currentUser.id) : await API.users.getAllEmployees();
+    if (currentUser.role === 'manager') {
+      document.getElementById('workLogSubtitle').textContent = 'Review your team\'s field visit records, or log your own.';
+      const reports = await API.users.getDirectReports(currentUser.id);
+      teamMembers = [currentUser, ...reports];
+      // Managers can log their own work too — only hide "Add" for Super Admin.
+    } else {
+      document.getElementById('workLogSubtitle').textContent = 'Review detailed field visit records submitted across the organization.';
+      document.getElementById('openAddLogBtn').style.display = 'none';
+      const [employees, managers] = await Promise.all([API.users.getAllEmployees(), API.users.getAllManagers()]);
+      teamMembers = [...managers, ...employees];
+    }
     const sel = document.getElementById('filterEmployee');
-    teamMembers.forEach(e => sel.insertAdjacentHTML('beforeend', `<option value="${e.id}">${escapeHtml(e.name)}</option>`));
+    teamMembers.forEach(e => {
+      const label = e.id === currentUser.id ? `${e.name} (you)` : e.name;
+      sel.insertAdjacentHTML('beforeend', `<option value="${e.id}">${escapeHtml(label)}</option>`);
+    });
   }
 
   await loadLogs();
@@ -71,7 +82,7 @@ function renderTable(list) {
         <button class="btn btn-sm btn-light view-log-btn" data-id="${l.id}" title="View / Edit">
           <span class="material-symbols-outlined" style="font-size:18px;">visibility</span>
         </button>
-        ${currentUser.role === 'employee' ? `<button class="btn btn-sm btn-light text-danger delete-log-btn" data-id="${l.id}" title="Delete">
+        ${(currentUser.role === 'employee' || l.employeeId === currentUser.id) ? `<button class="btn btn-sm btn-light text-danger delete-log-btn" data-id="${l.id}" title="Delete">
           <span class="material-symbols-outlined" style="font-size:18px;">delete</span>
         </button>` : ''}
       </td>
@@ -90,7 +101,10 @@ function renderTable(list) {
 function openLogModal(log) {
   const form = document.getElementById('workLogForm');
   form.reset();
-  const readOnly = currentUser.role !== 'employee';
+  // Read-only unless it's a brand new entry (always self-authored) or it
+  // belongs to the person viewing it — so a manager can edit their own log
+  // even though they can only view their team's logs.
+  const readOnly = !!log && log.employeeId !== currentUser.id;
   document.getElementById('wlId').value = log ? log.id : '';
   document.getElementById('workLogModalTitle').textContent = log ? (readOnly ? 'View Work Log' : 'Edit Work Log') : 'Add Work Log';
   document.getElementById('workLogSubmitBtn').style.display = readOnly ? 'none' : '';
