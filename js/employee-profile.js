@@ -58,6 +58,11 @@ function renderProfileHeader() {
     document.getElementById('editEmail').value = viewedUser.email;
     document.getElementById('editPhone').value = viewedUser.phone || '';
     document.getElementById('editTitle').value = viewedUser.title || '';
+    document.getElementById('editPassword').value = '';
+    // Only show a password field when you're editing your own profile — this
+    // is how Super Admin accounts (which have no Reset Password button
+    // anywhere else, by design) can change their own password.
+    document.getElementById('editPasswordWrap').classList.toggle('d-none', !isSelf);
     bootstrap.Modal.getOrCreateInstance(document.getElementById('editProfileModal')).show();
   });
 
@@ -111,10 +116,12 @@ function wireEditForm() {
       phone: document.getElementById('editPhone').value.trim(),
       title: document.getElementById('editTitle').value.trim()
     };
+    const newPassword = document.getElementById('editPassword').value.trim();
+    if (newPassword) changes.password = newPassword;
     await API.users.update(viewedUser.id, changes);
     viewedUser = await API.users.getById(viewedUser.id);
     bootstrap.Modal.getInstance(document.getElementById('editProfileModal')).hide();
-    showToast('Profile updated.', 'success');
+    showToast(newPassword ? 'Profile and password updated.' : 'Profile updated.', 'success');
     renderProfileHeader();
   });
 }
