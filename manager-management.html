@@ -84,7 +84,7 @@
           <div class="table-responsive-card">
             <table class="table table-hover mb-0">
               <thead>
-                <tr><th>Manager</th><th>Contact</th><th>Team Size</th><th>Status</th><th class="text-end">Actions</th></tr>
+                <tr><th>Manager</th><th>Contact</th><th>Reports To</th><th>Team Size</th><th>Status</th><th class="text-end">Actions</th></tr>
               </thead>
               <tbody id="managerTableBody">
                 <tr><td colspan="5" class="text-center text-muted-fw py-4">Loading...</td></tr>
@@ -124,6 +124,13 @@
             <div class="col-12">
               <label class="form-label">Title / Region</label>
               <input type="text" class="form-control" id="mgrTitle" placeholder="e.g. Regional Manager - North">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Reports To</label>
+              <select class="form-select" id="mgrReportsTo">
+                <option value="">— Top Level (reports to Super Admin) —</option>
+              </select>
+              <div class="form-text">Lets a manager sit under another manager for multi-level org structures. Leave as top level if they report directly to you.</div>
             </div>
             <div class="col-12" id="mgrPasswordWrap">
               <label class="form-label">Temporary Password</label>
