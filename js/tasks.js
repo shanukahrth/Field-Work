@@ -1,272 +1,210 @@
-/**
- * js/tasks.js — logic for tasks.html
- */
-let currentUser, teamMembers = [], allTasks = [], kanbanSortables = [];
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tasks · FieldPro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
 
-document.addEventListener('DOMContentLoaded', async () => {
-  currentUser = initPage('tasks', 'employee,manager,super_admin');
-  if (!currentUser) return;
-
-  document.getElementById('tDueDate').value = todayISO();
-
-  if (currentUser.role !== 'employee') {
-    document.getElementById('taskEmpColHeader').style.display = '';
-    document.getElementById('filterEmployeeWrap').style.display = '';
-    if (currentUser.role === 'manager') {
-      // Includes anyone reporting to this manager (employees AND sub-managers,
-      // for multi-level org structures), plus the manager themselves so they
-      // can be assigned tasks too, not just assign them to others.
-      const reports = await API.users.getDirectReports(currentUser.id);
-      teamMembers = [currentUser, ...reports];
-    } else {
-      const [employees, managers] = await Promise.all([API.users.getAllEmployees(), API.users.getAllManagers()]);
-      teamMembers = [...managers, ...employees];
-    }
-    const filterSel = document.getElementById('filterEmployee');
-    const formSel = document.getElementById('tAssignedTo');
-    teamMembers.forEach(e => {
-      const label = e.id === currentUser.id ? `${e.name} (you)` : e.name;
-      filterSel.insertAdjacentHTML('beforeend', `<option value="${e.id}">${escapeHtml(label)}</option>`);
-      formSel.insertAdjacentHTML('beforeend', `<option value="${e.id}">${escapeHtml(label)}</option>`);
-    });
-  } else {
-    // Hidden fields must not stay "required" or the browser will silently
-    // block form submission without showing any validation message.
-    document.getElementById('tAssignedWrap').style.display = 'none';
-    document.getElementById('tAssignedTo').required = false;
+<!-- App Preloader -->
+<div id="app-preloader" aria-hidden="true">
+  <div class="preloader-center">
+    <div class="preloader-mark">FW</div>
+    <div class="preloader-brand">FieldPro</div>
+    <div class="preloader-spinner"></div>
+  </div>
+  <div class="preloader-footer">
+    <div class="preloader-singer-badge">
+      <img src="assets/img/singer-logo.png" alt="Singer Sri Lanka PLC">
+    </div>
+    <div class="preloader-credit">Designed by : Shanuka Herath</div>
+  </div>
+</div>
+<script>
+(function () {
+  var el = document.getElementById('app-preloader');
+  if (!el) return;
+  var MIN_MS = 500, start = Date.now();
+  function hide() {
+    var wait = Math.max(0, MIN_MS - (Date.now() - start));
+    setTimeout(function () {
+      el.classList.add('is-hidden');
+      setTimeout(function () { if (el && el.parentNode) el.parentNode.removeChild(el); }, 500);
+    }, wait);
   }
+  if (document.readyState === 'complete') hide();
+  else window.addEventListener('load', hide);
+  setTimeout(hide, 3000); // safety fallback in case load never fires
+})();
+</script>
+<div class="app-wrapper">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="main-content">
+    <header id="topbar" class="topbar"></header>
 
-  await loadTasks();
-  wireFilters();
-  wireForm();
-  wireViewToggle();
-
-  // Support ?status= and ?q= deep links from other pages
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('status')) document.getElementById('filterStatus').value = params.get('status');
-  if (params.get('q')) document.getElementById('filterSearch').value = params.get('q');
-  if (params.get('status') || params.get('q')) applyFilters();
-});
-
-async function loadTasks() {
-  allTasks = currentUser.role === 'employee'
-    ? await API.tasks.getForUser(currentUser.id)
-    : await API.tasks.getForUsers(teamMembers.map(e => e.id));
-  applyFilters();
-}
-
-function employeeName(id) {
-  if (id === currentUser.id) return currentUser.name;
-  const e = teamMembers.find(e => e.id === id);
-  return e ? e.name : 'Unknown';
-}
-
-/* ---------------- Filtering ---------------- */
-function wireFilters() {
-  document.getElementById('filterSearch').addEventListener('input', debounce(applyFilters, 200));
-  document.getElementById('filterEmployee')?.addEventListener('change', applyFilters);
-  document.getElementById('filterPriority').addEventListener('change', applyFilters);
-  document.getElementById('filterStatus').addEventListener('change', applyFilters);
-  document.getElementById('filterDateFrom').addEventListener('change', applyFilters);
-  document.getElementById('clearFiltersBtn').addEventListener('click', () => {
-    document.querySelectorAll('.filter-bar input, .filter-bar select').forEach(el => el.value = '');
-    applyFilters();
-  });
-}
-
-function getFiltered() {
-  const q = document.getElementById('filterSearch').value.trim().toLowerCase();
-  const emp = document.getElementById('filterEmployee')?.value;
-  const priority = document.getElementById('filterPriority').value;
-  const status = document.getElementById('filterStatus').value;
-  const from = document.getElementById('filterDateFrom').value;
-  return allTasks.filter(t => {
-    if (q && !t.title.toLowerCase().includes(q) && !(t.description || '').toLowerCase().includes(q)) return false;
-    if (emp && t.assignedTo !== emp) return false;
-    if (priority && t.priority !== priority) return false;
-    if (status && t.status !== status) return false;
-    if (from && t.dueDate < from) return false;
-    return true;
-  });
-}
-
-function applyFilters() {
-  const filtered = getFiltered();
-  renderTable(filtered);
-  renderKanban(filtered);
-}
-
-/* ---------------- Table view ---------------- */
-function renderTable(list) {
-  const tbody = document.getElementById('taskTableBody');
-  const showEmpCol = currentUser.role !== 'employee';
-  const sorted = list.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-  if (sorted.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="${showEmpCol ? 7 : 6}" class="text-center py-4">
-      <div class="empty-state"><span class="material-symbols-outlined">task</span><div>No tasks match your filters.</div></div>
-    </td></tr>`;
-    return;
-  }
-  tbody.innerHTML = sorted.map(t => `
-    <tr>
-      <td>
-        <div class="fw-semibold">${escapeHtml(t.title)}</div>
-        <div class="small text-muted-fw">${escapeHtml(t.description || '')}</div>
-      </td>
-      ${showEmpCol ? `<td><div class="d-flex align-items-center gap-2"><div class="avatar-sm" style="background:#3457D5">${getInitials(employeeName(t.assignedTo))}</div>${escapeHtml(employeeName(t.assignedTo))}</div></td>` : ''}
-      <td>${priorityBadge(t.priority)}</td>
-      <td class="${isOverdue(t.dueDate, t.status) ? 'text-danger fw-semibold' : ''}">${formatDateShort(t.dueDate)}</td>
-      <td>${statusPill(isOverdue(t.dueDate, t.status) ? 'Overdue' : t.status)}</td>
-      <td>${t.reminder ? '<span class="material-symbols-outlined text-primary" style="font-size:18px;">notifications_active</span>' : '<span class="material-symbols-outlined text-muted-fw" style="font-size:18px;">notifications_off</span>'}</td>
-      <td class="text-end">
-        <button class="btn btn-sm btn-light edit-task-btn" data-id="${t.id}"><span class="material-symbols-outlined" style="font-size:18px;">edit</span></button>
-        <button class="btn btn-sm btn-light text-danger delete-task-btn" data-id="${t.id}"><span class="material-symbols-outlined" style="font-size:18px;">delete</span></button>
-      </td>
-    </tr>`).join('');
-
-  tbody.querySelectorAll('.edit-task-btn').forEach(btn => btn.addEventListener('click', () => openTaskModal(allTasks.find(x => x.id === btn.dataset.id))));
-  tbody.querySelectorAll('.delete-task-btn').forEach(btn => btn.addEventListener('click', () => deleteTask(btn.dataset.id)));
-}
-
-/* ---------------- Kanban view ---------------- */
-function renderKanban(list) {
-  const cols = { 'Pending': 'kanbanPending', 'In Progress': 'kanbanInProgress', 'Completed': 'kanbanCompleted', 'Cancelled': 'kanbanCancelled' };
-  Object.entries(cols).forEach(([status, elId]) => {
-    const items = list.filter(t => t.status === status);
-    document.getElementById(`kanbanCount${status.replace(' ', '')}`).textContent = items.length;
-    const el = document.getElementById(elId);
-    el.innerHTML = items.length ? items.map(t => `
-      <div class="kanban-card" data-id="${t.id}">
-        <div class="d-flex justify-content-between align-items-start">
-          <div class="fw-semibold small">${escapeHtml(t.title)}</div>
-          <button class="btn btn-sm btn-light p-1 edit-task-btn" data-id="${t.id}"><span class="material-symbols-outlined" style="font-size:16px;">edit</span></button>
+    <main class="page-content">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+          <h2 class="fw-display fw-bold mb-1">Task Management</h2>
+          <p class="text-muted-fw mb-0">Plan, assign and track work across the field team.</p>
         </div>
-        ${currentUser.role !== 'employee' ? `<div class="small text-muted-fw">${escapeHtml(employeeName(t.assignedTo))}</div>` : ''}
-        <div class="d-flex justify-content-between align-items-center mt-2">
-          ${priorityBadge(t.priority)}
-          <span class="small ${isOverdue(t.dueDate, t.status) ? 'text-danger fw-semibold' : 'text-muted-fw'}">${formatDateShort(t.dueDate)}</span>
+        <div class="d-flex gap-2">
+          <div class="btn-group" role="group">
+            <button class="btn btn-light active" id="viewTableBtn">
+              <span class="material-symbols-outlined" style="font-size:18px;">table_rows</span>
+            </button>
+            <button class="btn btn-light" id="viewKanbanBtn">
+              <span class="material-symbols-outlined" style="font-size:18px;">view_kanban</span>
+            </button>
+          </div>
+          <button class="btn btn-primary d-flex align-items-center gap-2" id="openAddTaskBtn">
+            <span class="material-symbols-outlined" style="font-size:20px;">add_task</span> Add Task
+          </button>
         </div>
-      </div>`).join('') : `<div class="text-center text-muted-fw small py-3">No tasks</div>`;
-  });
+      </div>
 
-  document.querySelectorAll('#kanbanView .edit-task-btn').forEach(btn => btn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    openTaskModal(allTasks.find(x => x.id === btn.dataset.id));
-  }));
+      <!-- Filters -->
+      <div class="filter-bar mb-4">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label mb-1">Search</label>
+            <input type="text" class="form-control" id="filterSearch" placeholder="Search tasks...">
+          </div>
+          <div class="col-md-2" id="filterEmployeeWrap" style="display:none;">
+            <label class="form-label mb-1">Assigned To</label>
+            <select class="form-select" id="filterEmployee"><option value="">Everyone</option></select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label mb-1">Priority</label>
+            <select class="form-select" id="filterPriority"><option value="">All</option><option>High</option><option>Medium</option><option>Low</option></select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label mb-1">Status</label>
+            <select class="form-select" id="filterStatus"><option value="">All</option><option>Pending</option><option>In Progress</option><option>Completed</option><option>Cancelled</option></select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label mb-1">Due From</label>
+            <input type="date" class="form-control" id="filterDateFrom">
+          </div>
+          <div class="col-md-1">
+            <button class="btn btn-light w-100" id="clearFiltersBtn" title="Clear"><span class="material-symbols-outlined" style="font-size:18px;">refresh</span></button>
+          </div>
+        </div>
+      </div>
 
-  kanbanSortables.forEach(s => s.destroy());
-  kanbanSortables = [];
-  Object.values(cols).forEach(elId => {
-    const el = document.getElementById(elId);
-    kanbanSortables.push(new Sortable(el, {
-      group: 'kanban', animation: 150, ghostClass: 'sortable-ghost',
-      onEnd: async (evt) => {
-        const taskId = evt.item.dataset.id;
-        const newStatus = evt.to.dataset.status;
-        await API.tasks.update(taskId, { status: newStatus });
-        showToast(`Task moved to ${newStatus}.`, 'success');
-        await loadTasks();
-      }
-    }));
-  });
-}
+      <!-- Table view -->
+      <div class="card section-card" id="tableView">
+        <div class="card-body p-0">
+          <div class="table-responsive-card">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Task</th><th id="taskEmpColHeader" style="display:none;">Assigned To</th>
+                  <th>Priority</th><th>Due Date</th><th>Status</th><th>Reminder</th><th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="taskTableBody">
+                <tr><td colspan="7" class="text-center text-muted-fw py-4">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-/* ---------------- View toggle ---------------- */
-function wireViewToggle() {
-  document.getElementById('viewTableBtn').addEventListener('click', () => {
-    document.getElementById('tableView').classList.remove('d-none');
-    document.getElementById('kanbanView').classList.add('d-none');
-    document.getElementById('viewTableBtn').classList.add('active');
-    document.getElementById('viewKanbanBtn').classList.remove('active');
-  });
-  document.getElementById('viewKanbanBtn').addEventListener('click', () => {
-    document.getElementById('tableView').classList.add('d-none');
-    document.getElementById('kanbanView').classList.remove('d-none');
-    document.getElementById('viewKanbanBtn').classList.add('active');
-    document.getElementById('viewTableBtn').classList.remove('active');
-  });
-}
+      <!-- Kanban view -->
+      <div class="row g-3 d-none" id="kanbanView">
+        <div class="col-md-3">
+          <div class="kanban-col">
+            <div class="kanban-col-header"><span>Pending</span><span class="pill pill-amber" id="kanbanCountPending">0</span></div>
+            <div class="kanban-col-body" data-status="Pending" id="kanbanPending"></div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="kanban-col">
+            <div class="kanban-col-header"><span>In Progress</span><span class="pill pill-blue" id="kanbanCountInProgress">0</span></div>
+            <div class="kanban-col-body" data-status="In Progress" id="kanbanInProgress"></div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="kanban-col">
+            <div class="kanban-col-header"><span>Completed</span><span class="pill pill-teal" id="kanbanCountCompleted">0</span></div>
+            <div class="kanban-col-body" data-status="Completed" id="kanbanCompleted"></div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="kanban-col">
+            <div class="kanban-col-header"><span>Cancelled</span><span class="pill pill-gray" id="kanbanCountCancelled">0</span></div>
+            <div class="kanban-col-body" data-status="Cancelled" id="kanbanCancelled"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
 
-/* ---------------- Add / Edit / Delete ---------------- */
-function openTaskModal(task) {
-  const form = document.getElementById('taskForm');
-  form.reset();
-  document.getElementById('tId').value = task ? task.id : '';
-  document.getElementById('taskModalTitle').textContent = task ? 'Edit Task' : 'Add Task';
-  if (task) {
-    document.getElementById('tTitle').value = task.title;
-    document.getElementById('tDescription').value = task.description || '';
-    document.getElementById('tPriority').value = task.priority;
-    document.getElementById('tDueDate').value = task.dueDate;
-    document.getElementById('tStatus').value = task.status;
-    document.getElementById('tReminder').checked = !!task.reminder;
-    if (currentUser.role !== 'employee') document.getElementById('tAssignedTo').value = task.assignedTo;
-  } else {
-    document.getElementById('tDueDate').value = todayISO();
-    if (currentUser.role !== 'employee' && teamMembers.length) document.getElementById('tAssignedTo').value = teamMembers[0].id;
-  }
-  bootstrap.Modal.getOrCreateInstance(document.getElementById('taskModal')).show();
-}
+<!-- Add / Edit Task Modal -->
+<div class="modal fade" id="taskModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-display" id="taskModalTitle">Add Task</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="taskForm">
+        <input type="hidden" id="tId">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input type="text" class="form-control" id="tTitle" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" id="tDescription" rows="2"></textarea>
+          </div>
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label">Priority</label>
+              <select class="form-select" id="tPriority"><option>High</option><option selected>Medium</option><option>Low</option></select>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Due Date</label>
+              <input type="date" class="form-control" id="tDueDate" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Status</label>
+              <select class="form-select" id="tStatus"><option>Pending</option><option>In Progress</option><option>Completed</option><option>Cancelled</option></select>
+            </div>
+            <div class="col-6" id="tAssignedWrap">
+              <label class="form-label">Assigned To</label>
+              <select class="form-select" id="tAssignedTo" required></select>
+            </div>
+          </div>
+          <div class="form-check mt-3">
+            <input class="form-check-input" type="checkbox" id="tReminder">
+            <label class="form-check-label" for="tReminder">Set a reminder for this task</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
-function wireForm() {
-  document.getElementById('openAddTaskBtn').addEventListener('click', () => openTaskModal(null));
-  document.getElementById('taskForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const id = document.getElementById('tId').value;
-    const payload = {
-      title: document.getElementById('tTitle').value.trim(),
-      description: document.getElementById('tDescription').value.trim(),
-      priority: document.getElementById('tPriority').value,
-      dueDate: document.getElementById('tDueDate').value,
-      status: document.getElementById('tStatus').value,
-      reminder: document.getElementById('tReminder').checked,
-      assignedTo: currentUser.role === 'employee' ? currentUser.id : document.getElementById('tAssignedTo').value
-    };
-    if (id) {
-      await API.tasks.update(id, payload);
-      showToast('Task updated.', 'success');
-    } else {
-      payload.createdBy = currentUser.id;
-      const created = await API.tasks.create(payload);
-      showToast('Task added.', 'success');
-      if (currentUser.role === 'manager') notifyManagerTaskCreated(created);
-    }
-    bootstrap.Modal.getInstance(document.getElementById('taskModal')).hide();
-    await loadTasks();
-  });
-}
-
-/**
- * Emails the assigned employee and every Super Admin when a manager creates
- * a task. No-op (silently) if EmailJS isn't configured — see js/app.js.
- */
-async function notifyManagerTaskCreated(task) {
-  try {
-    const [assignee, admins] = await Promise.all([
-      API.users.getById(task.assignedTo),
-      API.users.getAllSuperAdmins()
-    ]);
-    const recipients = new Set();
-    if (assignee) recipients.add(assignee.email);
-    admins.forEach((a) => recipients.add(a.email));
-    const templateParams = {
-      task_title: task.title,
-      task_description: task.description || '(no description)',
-      task_priority: task.priority,
-      task_due_date: task.dueDate,
-      assignee_name: assignee ? assignee.name : '',
-      manager_name: currentUser.name
-    };
-    await Promise.all([...recipients].map((email) => sendNotificationEmail(email, templateParams)));
-  } catch (err) {
-    console.error('Task-created notification failed:', err);
-  }
-}
-
-async function deleteTask(id) {
-  const ok = await showConfirm({ title: 'Delete this task?', message: 'This action cannot be undone.', confirmText: 'Delete', confirmClass: 'btn-danger' });
-  if (!ok) return;
-  await API.tasks.remove(id);
-  showToast('Task deleted.', 'success');
-  await loadTasks();
-}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script src="js/tasks.js"></script>
+</body>
+</html>
