@@ -259,22 +259,19 @@ function wireForm() {
  */
 async function notifyManagerTaskCreated(task) {
   try {
-    const [assignee, admins] = await Promise.all([
-      API.users.getById(task.assignedTo),
-      API.users.getAllSuperAdmins()
-    ]);
-    const recipients = new Set();
-    if (assignee) recipients.add(assignee.email);
-    admins.forEach((a) => recipients.add(a.email));
+    // Only emails the assignee — Super Admins were removed from this to
+    // conserve the limited monthly email quota.
+    const assignee = await API.users.getById(task.assignedTo);
+    if (!assignee) return;
     const templateParams = {
       task_title: task.title,
       task_description: task.description || '(no description)',
       task_priority: task.priority,
       task_due_date: task.dueDate,
-      assignee_name: assignee ? assignee.name : '',
+      assignee_name: assignee.name,
       manager_name: currentUser.name
     };
-    await Promise.all([...recipients].map((email) => sendNotificationEmail(email, templateParams)));
+    await sendNotificationEmail(assignee.email, templateParams);
   } catch (err) {
     console.error('Task-created notification failed:', err);
   }
