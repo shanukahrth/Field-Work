@@ -102,7 +102,7 @@ function renderTable(list) {
   const showEmpCol = currentUser.role !== 'employee';
   const sorted = list.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   if (sorted.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="${showEmpCol ? 7 : 6}" class="text-center py-4">
+    tbody.innerHTML = `<tr><td colspan="${showEmpCol ? 8 : 7}" class="text-center py-4">
       <div class="empty-state"><span class="material-symbols-outlined">task</span><div>No tasks match your filters.</div></div>
     </td></tr>`;
     return;
@@ -110,7 +110,10 @@ function renderTable(list) {
   tbody.innerHTML = sorted.map(t => `
     <tr>
       <td>
-        <div class="fw-semibold">${escapeHtml(t.title)}</div>
+        <input type="checkbox" class="form-check-input complete-task-check" data-id="${t.id}" ${t.status === 'Completed' ? 'checked' : ''} title="Mark as completed">
+      </td>
+      <td>
+        <div class="fw-semibold ${t.status === 'Completed' ? 'text-decoration-line-through text-muted-fw' : ''}">${escapeHtml(t.title)}</div>
         <div class="small text-muted-fw">${escapeHtml(t.description || '')}</div>
       </td>
       ${showEmpCol ? `<td><div class="d-flex align-items-center gap-2"><div class="avatar-sm" style="background:#3457D5">${getInitials(employeeName(t.assignedTo))}</div>${escapeHtml(employeeName(t.assignedTo))}</div></td>` : ''}
@@ -119,6 +122,7 @@ function renderTable(list) {
       <td>${statusPill(isOverdue(t.dueDate, t.status) ? 'Overdue' : t.status)}</td>
       <td>${t.reminder ? '<span class="material-symbols-outlined text-primary" style="font-size:18px;">notifications_active</span>' : '<span class="material-symbols-outlined text-muted-fw" style="font-size:18px;">notifications_off</span>'}</td>
       <td class="text-end">
+        ${currentUser.role === 'manager' ? `<button class="btn btn-sm btn-light text-primary notify-task-btn" data-id="${t.id}" title="Send email notification"><span class="material-symbols-outlined" style="font-size:18px;">mail</span></button>` : ''}
         <button class="btn btn-sm btn-light edit-task-btn" data-id="${t.id}"><span class="material-symbols-outlined" style="font-size:18px;">edit</span></button>
         <button class="btn btn-sm btn-light text-danger delete-task-btn" data-id="${t.id}"><span class="material-symbols-outlined" style="font-size:18px;">delete</span></button>
       </td>
@@ -126,6 +130,19 @@ function renderTable(list) {
 
   tbody.querySelectorAll('.edit-task-btn').forEach(btn => btn.addEventListener('click', () => openTaskModal(allTasks.find(x => x.id === btn.dataset.id))));
   tbody.querySelectorAll('.delete-task-btn').forEach(btn => btn.addEventListener('click', () => deleteTask(btn.dataset.id)));
+  tbody.querySelectorAll('.complete-task-check').forEach(cb => cb.addEventListener('change', async () => {
+    cb.disabled = true;
+    await API.tasks.update(cb.dataset.id, { status: cb.checked ? 'Completed' : 'Pending' });
+    showToast(cb.checked ? 'Task marked as completed.' : 'Task reopened.', 'success');
+    await loadTasks();
+  }));
+  tbody.querySelectorAll('.notify-task-btn').forEach(btn => btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    const task = allTasks.find(x => x.id === btn.dataset.id);
+    await notifyManagerTaskCreated(task);
+    showToast('Notification email sent.', 'success');
+    btn.disabled = false;
+  }));
 }
 
 /* ---------------- Kanban view ---------------- */
