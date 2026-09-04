@@ -15,10 +15,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   wireControls();
 });
 
+// Fixed: build the date from local calendar values instead of going through
+// toISOString(), which converts to UTC first and silently shifts the date
+// backward by a day for any timezone ahead of UTC (e.g. Sri Lanka, UTC+5:30).
 function shiftDate(dateStr, days) {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 async function loadPlannerForDate() {
